@@ -27,11 +27,12 @@ MIN_TEAMS = 2
 MAX_TEAMS = 18
 REVEAL_DELAY = 2  # Delay in seconds for revealing each pick during the lottery
 
-# Configure logging
+# Configure logging settings
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Change to DEBUG to capture all messages
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
 
 # Ensure JSON folder exists
 os.makedirs(JSON_FOLDER, exist_ok=True)
@@ -651,37 +652,49 @@ class LotteryResultWindow(tk.Toplevel):
     def run_lottery(self) -> None:
         """Run the lottery to determine the draft order."""
         distribution_type = self.league['distribution']
-        custom_dist = self.league.get('custom_distribution', {})
-        order = custom_dist.get('order', self.league['managers'])
 
+        # Logging the selected distribution type
+        logging.debug(f"Selected distribution type: {distribution_type}")
+
+        # Ensure the correct distribution data is used
         if distribution_type.lower() == 'custom':
-            self.original_balls = custom_dist.get('balls', [1] * len(order))
-            # Create a dictionary mapping managers to their ball counts
-            manager_balls = dict(zip(order, self.original_balls))
-            # Create the pool based on the managers' order in self.league['managers']
-            pool = []
-            for manager in self.league['managers']:
-                ball_count = manager_balls.get(manager, 1)  # Default to 1 if not found
-                pool.extend([manager] * ball_count)
+            dist_data = self.league.get('custom_distribution', {})
         elif distribution_type.lower() == 'straight':
-            self.original_balls = [1] * len(self.league['managers'])
-            pool = random.sample(self.league['managers'], len(self.league['managers']))
+            dist_data = self.league.get('straight_distribution', {})
         elif distribution_type.lower() == 'weighted':
-            self.original_balls = list(range(len(self.league['managers']), 0, -1))
-            pool = [
-                manager
-                for manager, weight in zip(self.league['managers'], self.original_balls)
-                for _ in range(weight)
-            ]
+            dist_data = self.league.get('weighted_distribution', {})
         else:
             messagebox.showerror("Error", f"Invalid distribution type: {distribution_type}")
             logging.error(f"Invalid distribution type: {distribution_type}")
             return
 
+        # Logging the distribution data being used
+        logging.debug(f"Distribution data used: {dist_data}")
+
+        # Use the correct balls and order from the chosen distribution
+        self.original_balls = dist_data.get('balls', [1] * len(self.league['managers']))
+        order = dist_data.get('order', self.league['managers'])
+
+        # Logging the balls and order arrays
+        logging.debug(f"Balls array: {self.original_balls}")
+        logging.debug(f"Order array: {order}")
+
+        # Build the pool based on the distribution type
+        pool = []
+        for manager, ball_count in zip(order, self.original_balls):
+            pool.extend([manager] * ball_count)
+
+        # Logging the pool after it's been constructed
+        logging.debug(f"Initial pool: {pool}")
+
         while len(self.selected_order) < len(self.league['managers']):
             pick = random.choice(pool)
             self.selected_order.append(pick)
             pool = [p for p in pool if p != pick]  # Remove selected manager from pool
+
+            # Logging the selected order and remaining pool after each pick
+            logging.debug(f"Selected order so far: {self.selected_order}")
+            logging.debug(f"Remaining pool: {pool}")
 
         # Display the draft order title
         ttk.Label(self.result_frame, text="Draft Order:", font=("Arial", 14)).pack(pady=10)
@@ -778,13 +791,28 @@ class LotteryResultWindow(tk.Toplevel):
 
         username = getpass.getuser()
         distribution_type = self.league['distribution']
-        len(self.league['managers'])
 
-        custom_dist = self.league.get('custom_distribution', {})
-        manager_balls = dict(zip(custom_dist.get('order', self.league['managers']),
-                                 custom_dist.get('balls', self.original_balls)))
+        # Depending on the distribution type, we select the correct `balls` and `order`.
+        if distribution_type.lower() == 'custom':
+            dist_data = self.league.get('custom_distribution', {})
+        elif distribution_type.lower() == 'straight':
+            dist_data = self.league.get('straight_distribution', {})
+        elif distribution_type.lower() == 'weighted':
+            dist_data = self.league.get('weighted_distribution', {})
+        else:
+            logging.error(f"Invalid distribution type: {distribution_type}")
+            return
 
-        total_balls = sum(manager_balls.values())
+        # Logging the distribution data being used
+        logging.debug(f"Distribution data used for saving: {dist_data}")
+
+        manager_balls = dict(zip(dist_data.get('order', self.league['managers']),
+                                 dist_data.get('balls', self.original_balls)))
+
+        total_balls = sum(manager_balls.values())  # Recalculate total balls correctly
+
+        # Logging the total number of balls
+        logging.debug(f"Total balls: {total_balls}")
 
         # Calculate exact odds for each pick for each manager using combinatorial calculations
         exact_odds_matrix = []
