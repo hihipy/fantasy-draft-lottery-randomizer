@@ -1,33 +1,36 @@
-# Fantasy-Draft-Lottery-Randomizer
+# Fantasy Draft Lottery Randomizer
 
 This repository contains a comprehensive Fantasy Draft Lottery Randomizer application. It is designed to help fantasy sports league managers conduct fair and transparent draft lotteries by providing a customizable, GUI-based tool for managing leagues, setting lottery distributions, and running draft order simulations.
 
 ## Features
 
-- Manage multiple fantasy sports leagues
-- Support for various lottery distribution types:
+- **Manage multiple fantasy sports leagues**: Easily create, edit, and delete leagues.
+- **Support for various lottery distribution types**:
   - Straight (Random)
   - Weighted
   - Custom
-- Interactive GUI for easy league management and lottery execution
-- Gradual reveal of draft order with skip option
-- Detailed lottery results saved to file, including:
+- **Interactive GUI** for easy league management and lottery execution, built using `tkinter`.
+- **Gradual reveal** of draft order with an option to skip directly to the results.
+- **Detailed lottery results saved to a file**:
   - Draft order
   - Odds calculations
   - League information
   - Runtime details
-- Full transparency with included source code in results file
+- **Full transparency**: The generated results file includes the source code for auditing purposes.
+- **Asynchronous reveal**: The draft order is revealed asynchronously, allowing for a dramatic reveal experience.
+- **Logging system**: Comprehensive logging for debugging and tracking.
+- **Error handling**: Robust error handling and input validation.
 
 ## Contents
 
-- League management system
-- Distribution management interface
-- Lottery simulation algorithm
-- GUI implementation using tkinter
-- Asynchronous draft order reveal
-- Logging system for debugging and tracking
-- Error handling and input validation
-- Results saving with tabulated data
+- **League Management System**: Create and manage fantasy sports leagues with ease.
+- **Distribution Management Interface**: Customize and manage the lottery distribution for each league.
+- **Lottery Simulation Algorithm**: Ensures fair and transparent draft order generation.
+- **GUI Implementation**: User-friendly interface for managing leagues and running lotteries.
+- **Asynchronous Draft Order Reveal**: Experience a suspenseful reveal of draft picks.
+- **Logging System**: Logs events and errors for easy troubleshooting.
+- **Error Handling and Input Validation**: Ensures smooth operation and prevents common issues.
+- **Results Saving with Tabulated Data**: Saves detailed lottery results with clear, tabulated data.
 
 ## Usage
 
@@ -39,29 +42,29 @@ To run the Fantasy Draft Lottery Randomizer:
 
 1. Ensure you have Python 3.7+ installed on your system.
 2. Install the required dependencies:
-   ```
+   ```sh
    pip install tkinter asyncio tabulate
    ```
 3. Run the main script:
-   ```
+   ```sh
    python fantasy_draft_lottery.py
    ```
 
 ## Application Flow
 
-1. Start the application
-2. Add or manage leagues
-3. Set up lottery distribution for a league
-4. Run the lottery simulation
-5. View and save the results
+1. **Start the application**: Launch the app and open the main window.
+2. **Add or manage leagues**: Create new leagues or edit existing ones.
+3. **Set up lottery distribution for a league**: Choose between straight, weighted, or custom distribution.
+4. **Run the lottery simulation**: Conduct the draft lottery for the selected league.
+5. **View and save the results**: Review the draft order and save the results to a file.
 
 ## Customization
 
 The application allows for customization of:
-- Number of teams in a league
-- League names and team managers
-- Lottery distribution types and weights
-- Results file save location
+- **Number of teams in a league**: Set the number of teams in each league.
+- **League names and team managers**: Customize the names of leagues and managers.
+- **Lottery distribution types and weights**: Choose from predefined or custom lottery distributions.
+- **Results file save location**: Choose where to save the detailed results file.
 
 ## Acknowledgements
 
@@ -71,7 +74,7 @@ This project was inspired by the Draft Pick Lottery Generator at [https://draftp
 
 ## License
 
-This project is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/) license. 
+This project is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.
 
 ### Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
 
