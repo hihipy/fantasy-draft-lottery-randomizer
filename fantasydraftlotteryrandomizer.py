@@ -1,19 +1,58 @@
-import asyncio  # For managing asynchronous tasks, used in revealing the draft order gradually.
-import getpass  # For retrieving the current system username, used in logging who generated the results.
-import json  # For handling JSON data, specifically loading and saving league data.
-import logging  # For logging events, errors, and other messages during the execution of the program.
-import os  # For interacting with the operating system, including file paths and directory management.
-import random  # For generating random numbers, used in the draft lottery simulation.
-import threading  # For running tasks in separate threads, such as running the lottery in the background.
-import tkinter as tk  # The main Tkinter module, used for creating the graphical user interface (GUI).
+import sys
+import subprocess
+import logging
 
-from datetime import datetime  # For working with date and time, such as logging and timestamps.
-from tkinter import ttk, messagebox, simpledialog, filedialog  # Additional Tkinter widgets and dialogs.
+# Configure logging settings
+logging.basicConfig(
+    level=logging.DEBUG,  # Set to DEBUG to capture all levels of log messages
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
-from typing import List, Dict, Any, Optional, Tuple  # For type hinting and annotations, improving code readability
-# and ensuring type safety.
+# Function to check if a package is installed and attempt to install if not found
+def check_and_install(package_name):
+    try:
+        __import__(package_name)
+    except ImportError as import_error:
+        logging.warning(f"Package '{package_name}' not found. Attempting to install it...")
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+            logging.info(f"Successfully installed package '{package_name}'.")
+        except subprocess.CalledProcessError as subprocess_error:
+            logging.error(f"Failed to install package '{package_name}'. Error: {subprocess_error}")
+            sys.exit(1)
 
-from tabulate import tabulate  # For formatting tables in text output, used in displaying lottery results.
+# List of required packages
+required_packages = [
+    "asyncio", "getpass", "json", "logging", "os", "random", "threading",
+    "tkinter", "datetime", "typing", "tabulate"
+]
+
+# Check and install required packages
+for package in required_packages:
+    check_and_install(package)
+
+# Proceed with the main imports after ensuring all dependencies are available
+try:
+    import asyncio
+    import getpass
+    import json
+    import logging
+    import os
+    import random
+    import threading
+    import tkinter as tk
+
+    from datetime import datetime
+    from tkinter import ttk, messagebox, simpledialog, filedialog
+
+    from typing import List, Dict, Any, Optional, Tuple
+    from tabulate import tabulate
+
+    # Log a message confirming that all necessary packages have been loaded
+    logging.info("All necessary packages loaded successfully.")
+except ImportError as import_error_main:
+    logging.critical(f"Critical error: {import_error_main}. Exiting the program.")
+    sys.exit(1)
 
 # Constants for application settings
 GREEK_LETTERS = [
@@ -27,16 +66,14 @@ MIN_TEAMS = 2
 MAX_TEAMS = 18
 REVEAL_DELAY = 2  # Delay in seconds for revealing each pick during the lottery
 
-# Configure logging settings
-logging.basicConfig(
-    level=logging.DEBUG,  # Change to DEBUG to capture all messages
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
-
 # Ensure JSON folder exists
 os.makedirs(JSON_FOLDER, exist_ok=True)
 
+# Additional debug statements to check the environment setup
+logging.debug(f"JSON_FOLDER set to: {JSON_FOLDER}")
+logging.debug(f"DEFAULT_SAVE_FOLDER set to: {DEFAULT_SAVE_FOLDER}")
+logging.debug(f"Python version: {sys.version}")
+logging.debug(f"OS platform: {sys.platform}")
 
 class LeagueManager:
     """Manages leagues and handles saving/loading data to JSON files."""
