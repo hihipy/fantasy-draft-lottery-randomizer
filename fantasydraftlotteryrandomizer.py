@@ -1,18 +1,21 @@
-import json  # For handling JSON data (loading and saving league data)
-import getpass  # For retrieving the current username
-import os  # For interacting with the operating system (e.g., file paths, directory creation)
-import random  # For generating random numbers (used in the draft lottery simulation)
-import asyncio  # For managing asynchronous tasks (used in async reveal)
-import tkinter as tk  # For creating the GUI (main Tkinter module)
-import threading  # For running tasks in separate threads (e.g., running the lottery in the background)
-from datetime import datetime  # For working with date and time (e.g., logging, timestamps)
-from tkinter import ttk, messagebox, simpledialog, filedialog  # For additional Tkinter widgets and dialogs
-from tabulate import tabulate  # For formatting tables in text output
-import logging  # For logging events and errors
-from typing import List, Dict, Any, Optional, Tuple  # For type hinting and annotations
-from collections import defaultdict  # For dictionaries with default values (used in the simulation)
+import asyncio  # For managing asynchronous tasks, used in revealing the draft order gradually.
+import getpass  # For retrieving the current system username, used in logging who generated the results.
+import json  # For handling JSON data, specifically loading and saving league data.
+import logging  # For logging events, errors, and other messages during the execution of the program.
+import os  # For interacting with the operating system, including file paths and directory management.
+import random  # For generating random numbers, used in the draft lottery simulation.
+import threading  # For running tasks in separate threads, such as running the lottery in the background.
+import tkinter as tk  # The main Tkinter module, used for creating the graphical user interface (GUI).
 
-# Constants
+from datetime import datetime  # For working with date and time, such as logging and timestamps.
+from tkinter import ttk, messagebox, simpledialog, filedialog  # Additional Tkinter widgets and dialogs.
+
+from typing import List, Dict, Any, Optional, Tuple  # For type hinting and annotations, improving code readability
+# and ensuring type safety.
+
+from tabulate import tabulate  # For formatting tables in text output, used in displaying lottery results.
+
+# Constants for application settings
 GREEK_LETTERS = [
     'α', 'β', 'γ', 'δ', 'ε', 'ζ', 'η', 'θ', 'ι', 'κ',
     'λ', 'μ', 'ν', 'ξ', 'ο', 'π', 'ρ', 'σ'
@@ -35,13 +38,14 @@ os.makedirs(JSON_FOLDER, exist_ok=True)
 
 
 class LeagueManager:
-    """Manages the leagues and handles saving/loading to JSON files."""
+    """Manages leagues and handles saving/loading data to JSON files."""
 
     def __init__(self):
-        """Initialize the LeagueManager and load leagues from JSON."""
+        """Initialize the LeagueManager and load leagues from JSON files."""
         self.leagues: List[Dict[str, Any]] = self.load_leagues()
 
-    def load_leagues(self) -> List[Dict[str, Any]]:
+    @staticmethod
+    def load_leagues() -> List[Dict[str, Any]]:
         """Load leagues from the most recently modified JSON file."""
         files = [f for f in os.listdir(JSON_FOLDER) if f.endswith('.json')]
         if not files:
@@ -50,11 +54,16 @@ class LeagueManager:
         try:
             with open(os.path.join(JSON_FOLDER, latest_file), 'r') as f:
                 logging.info(f"Loaded leagues from {latest_file}")
-                return json.load(f)
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return [data]
+                elif isinstance(data, list):
+                    return data
+                else:
+                    logging.error("Unexpected JSON format: Root element is not a list or dict.")
+                    return []
         except json.JSONDecodeError:
-            messagebox.showerror(
-                "Error", "Failed to load leagues from JSON file. The file may be corrupted."
-            )
+            messagebox.showerror("Error", "Failed to load leagues from JSON file. The file may be corrupted.")
             logging.error("Failed to load leagues due to JSONDecodeError.")
             return []
 
@@ -88,9 +97,7 @@ class LeagueManager:
         logging.warning("Attempted to add a league, but max leagues limit reached.")
         return False
 
-    def edit_league(
-        self, index: int, name: str, num_teams: int, managers: List[str]
-    ) -> bool:
+    def edit_league(self, index: int, name: str, num_teams: int, managers: List[str]) -> bool:
         """Edit an existing league."""
         if 0 <= index < len(self.leagues):
             self.leagues[index].update({
@@ -142,11 +149,19 @@ class EditLeagueWindow(tk.Toplevel):
     ):
         """Initialize the EditLeagueWindow."""
         super().__init__(parent)
+        self.num_teams_spinbox = None
+        self.name_entry = None
         self.league_manager = league_manager
         self.league = league
         self.index = index
         self.title("Edit League" if league else "Add League")
         self.geometry("700x700")
+        self.name_var = tk.StringVar(value=self.league['name'] if self.league else "")
+        self.num_teams_var = tk.IntVar(value=self.league['num_teams'] if self.league else MIN_TEAMS)
+        self.manager_entries: List[tk.StringVar] = []
+        self.canvas = None
+        self.scrollbar = None
+        self.scrollable_frame = None
         self.setup_gui()
 
     def setup_gui(self) -> None:
@@ -158,7 +173,6 @@ class EditLeagueWindow(tk.Toplevel):
         name_frame = ttk.Frame(main_frame)
         name_frame.pack(fill=tk.X, pady=5)
         ttk.Label(name_frame, text="League Name:").pack(side=tk.LEFT, padx=5)
-        self.name_var = tk.StringVar(value=self.league['name'] if self.league else "")
         self.name_entry = ttk.Entry(name_frame, textvariable=self.name_var)
         self.name_entry.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
 
@@ -166,9 +180,6 @@ class EditLeagueWindow(tk.Toplevel):
         num_teams_frame = ttk.Frame(main_frame)
         num_teams_frame.pack(fill=tk.X, pady=5)
         ttk.Label(num_teams_frame, text="Number of Teams:").pack(side=tk.LEFT, padx=5)
-        self.num_teams_var = tk.IntVar(
-            value=self.league['num_teams'] if self.league else MIN_TEAMS
-        )
         self.num_teams_spinbox = ttk.Spinbox(
             num_teams_frame, from_=MIN_TEAMS, to=MAX_TEAMS,
             textvariable=self.num_teams_var, command=self.update_manager_list
@@ -194,7 +205,6 @@ class EditLeagueWindow(tk.Toplevel):
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
-        self.manager_entries: List[tk.StringVar] = []
         self.populate_manager_list()
 
         # Save and Cancel Buttons
@@ -266,9 +276,17 @@ class DistributionManager(tk.Toplevel):
     def __init__(self, parent: tk.Tk, league: Dict[str, Any]):
         """Initialize the DistributionManager."""
         super().__init__(parent)
+        self.details_frame = None
+        self.team_frame = None
+        self.content_frame = None
         self.league = league
         self.title(f"Lottery Distribution - {league['name']}")
         self.geometry("1200x700")
+        self.dist_var = tk.StringVar(value=self.league.get('distribution', 'straight'))
+        self.total_balls_var = tk.StringVar(value="")
+        self.tree = None
+        self.team_listbox = None
+        self.drag_start_index = None
         self.setup_gui()
 
     def setup_gui(self) -> None:
@@ -276,7 +294,6 @@ class DistributionManager(tk.Toplevel):
         dist_frame = ttk.Frame(self, padding="10")
         dist_frame.pack(fill=tk.X)
 
-        self.dist_var = tk.StringVar(value=self.league.get('distribution', 'straight'))
         ttk.Radiobutton(
             dist_frame, text="Straight (Random)", variable=self.dist_var,
             value="straight", command=self.update_distribution
@@ -290,7 +307,6 @@ class DistributionManager(tk.Toplevel):
             value="custom", command=self.update_distribution
         ).pack(side=tk.LEFT)
 
-        self.total_balls_var = tk.StringVar(value="")
         total_balls_label = ttk.Label(dist_frame, textvariable=self.total_balls_var)
         total_balls_label.pack(side=tk.RIGHT, padx=10)
 
@@ -437,17 +453,24 @@ class DistributionManager(tk.Toplevel):
         """Save the distribution details to the league."""
         distribution_type = self.dist_var.get()
         managers = list(self.team_listbox.get(0, tk.END))
-        if distribution_type in ['straight', 'weighted']:
+
+        if distribution_type == 'straight':
             self.league['distribution'] = distribution_type
-            self.league['custom_distribution'] = {}
-        else:  # custom
+            self.league['straight_distribution'] = {
+                'balls': [1] * len(managers)  # All managers have one ball in straight distribution
+            }
+        elif distribution_type == 'weighted':
+            self.league['distribution'] = distribution_type
+            self.league['weighted_distribution'] = {
+                'balls': list(range(len(managers), 0, -1))  # Assign balls in descending order
+            }
+        elif distribution_type == 'custom':
             balls = [int(self.tree.item(child)['values'][2]) for child in self.tree.get_children()]
-            custom_distribution = {
+            self.league['distribution'] = distribution_type
+            self.league['custom_distribution'] = {
                 'balls': balls,
                 'order': managers
             }
-            self.league['distribution'] = distribution_type
-            self.league['custom_distribution'] = custom_distribution
 
         messagebox.showinfo("Success", "Distribution saved successfully!")
         logging.info(f"Distribution for league {self.league['name']} saved.")
@@ -459,6 +482,8 @@ class DraftLotteryApp:
 
     def __init__(self, root: tk.Tk):
         """Initialize the DraftLotteryApp."""
+        self.league_listbox = None
+        self.main_frame = None
         self.root = root
         self.root.title("Fantasy Draft Lottery Randomizer")
         self.league_manager = LeagueManager()
@@ -482,15 +507,24 @@ class DraftLotteryApp:
         ttk.Button(button_frame, text="Add League", command=self.add_league).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Edit League", command=self.edit_league).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Delete League", command=self.delete_league).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Manage Lottery Odds", command=self.manage_distribution).pack(side=tk.LEFT, padx=5)
+        ttk.Button(
+            button_frame,
+            text="Manage Lottery Odds",
+            command=self.manage_distribution
+        ).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Start Lottery", command=self.start_lottery).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Quit", command=self.quit_app).pack(side=tk.LEFT, padx=5)
 
     def refresh_league_list(self) -> None:
         """Refresh the league list displayed in the main window."""
         self.league_listbox.delete(0, tk.END)
+
         for league in self.league_manager.leagues:
-            self.league_listbox.insert(tk.END, f"{league['name']} ({league['num_teams']} teams)")
+            # Ensure that 'league' is a dictionary
+            if isinstance(league, dict):
+                self.league_listbox.insert(tk.END, f"{league['name']} ({league['num_teams']} teams)")
+            else:
+                logging.error(f"Unexpected data format: {league} is not a dictionary.")
 
     def add_league(self) -> None:
         """Open the Add League window."""
@@ -566,8 +600,8 @@ class DraftLotteryApp:
 
         ttk.Label(dist_window, text="Choose Distribution:").pack(pady=10)
 
-        dist_var = tk.StringVar(value=league['distribution'])
-        dist_options = ["Straight", "Weighted", "Custom"]  # Kept as capitalized
+        dist_var = tk.StringVar(value="")  # Start with a blank value
+        dist_options = ["Straight", "Weighted", "Custom"]
         dist_dropdown = ttk.Combobox(dist_window, textvariable=dist_var, values=dist_options)
         dist_dropdown.pack(pady=10)
 
@@ -577,7 +611,7 @@ class DraftLotteryApp:
                 messagebox.showerror("Error", "Invalid distribution type selected.")
                 logging.error("Invalid distribution type selected.")
                 return
-            league['distribution'] = selected_dist  # Store the capitalized version
+            league['distribution'] = selected_dist  # Store the selected distribution
             self.league_manager.save_leagues()
             dist_window.destroy()
             result_window = LotteryResultWindow(self.root, league)
@@ -609,50 +643,50 @@ class LotteryResultWindow(tk.Toplevel):
         self.result_frame = ttk.Frame(self, padding="10")
         self.result_frame.pack(expand=True, fill=tk.BOTH)
         self.start_time = datetime.now()
+        self.selected_order = []
+        self.original_balls = []
+        self.skip_button = None
         self.run_lottery()
 
     def run_lottery(self) -> None:
         """Run the lottery to determine the draft order."""
         distribution_type = self.league['distribution']
-        managers = self.league['managers']
-        num_teams = len(managers)
+        custom_dist = self.league.get('custom_distribution', {})
+        order = custom_dist.get('order', self.league['managers'])
 
-        if distribution_type.lower() == 'straight':
-            # Each manager has one ball, equal odds
-            self.original_balls = [1] * num_teams
-            self.selected_order = random.sample(managers, num_teams)
+        if distribution_type.lower() == 'custom':
+            self.original_balls = custom_dist.get('balls', [1] * len(order))
+            # Create a dictionary mapping managers to their ball counts
+            manager_balls = dict(zip(order, self.original_balls))
+            # Create the pool based on the managers' order in self.league['managers']
+            pool = []
+            for manager in self.league['managers']:
+                ball_count = manager_balls.get(manager, 1)  # Default to 1 if not found
+                pool.extend([manager] * ball_count)
+        elif distribution_type.lower() == 'straight':
+            self.original_balls = [1] * len(self.league['managers'])
+            pool = random.sample(self.league['managers'], len(self.league['managers']))
         elif distribution_type.lower() == 'weighted':
-            # Assign balls based on reverse order (e.g., 12 to the first team, 11 to the second, etc.)
-            self.original_balls = list(range(num_teams, 0, -1))
-            pool = [manager for manager, weight in zip(managers, self.original_balls) for _ in range(weight)]
-            self.selected_order = []
-            while len(self.selected_order) < num_teams:
-                pick = random.choice(pool)
-                self.selected_order.append(pick)
-                pool = [p for p in pool if p != pick]  # Remove selected manager from pool
-        elif distribution_type.lower() == 'custom':
-            # Custom distribution
-            custom_dist = self.league.get('custom_distribution')
-            self.original_balls = custom_dist.get('balls', [])
-            order = custom_dist.get('order', [])
-            if not self.original_balls or not order:
-                messagebox.showerror("Error", "Custom distribution is not properly set up. Please check the settings.")
-                logging.error("Custom distribution setup is incorrect.")
-                return
-            managers = order
-            pool = [manager for manager, ball_count in zip(managers, self.original_balls) for _ in range(ball_count)]
-            self.selected_order = []
-            while len(self.selected_order) < num_teams:
-                pick = random.choice(pool)
-                self.selected_order.append(pick)
-                pool = [p for p in pool if p != pick]  # Remove selected manager from pool
+            self.original_balls = list(range(len(self.league['managers']), 0, -1))
+            pool = [
+                manager
+                for manager, weight in zip(self.league['managers'], self.original_balls)
+                for _ in range(weight)
+            ]
         else:
             messagebox.showerror("Error", f"Invalid distribution type: {distribution_type}")
             logging.error(f"Invalid distribution type: {distribution_type}")
             return
 
+        while len(self.selected_order) < len(self.league['managers']):
+            pick = random.choice(pool)
+            self.selected_order.append(pick)
+            pool = [p for p in pool if p != pick]  # Remove selected manager from pool
+
+        # Display the draft order title
         ttk.Label(self.result_frame, text="Draft Order:", font=("Arial", 14)).pack(pady=10)
 
+        # Add the skip button to allow users to skip the reveal process
         self.skip_button = ttk.Button(self.result_frame, text="Skip to End", command=self.skip_to_end)
         self.skip_button.pack(pady=5)
 
@@ -667,14 +701,21 @@ class LotteryResultWindow(tk.Toplevel):
     async def reveal_draft_order(self, selected_order: List[str]) -> None:
         """Reveal the draft order, either gradually or immediately if skipped."""
         self.labels = []
+        num_picks = len(selected_order)
+
         for idx, manager in enumerate(selected_order):
-            label = ttk.Label(self.result_frame, text=f"{idx + 1}. ???")
+            label_text = f"{idx + 1}. ???" if idx != num_picks - 1 else f"{idx + 1}. ???"
+            label = ttk.Label(self.result_frame, text=label_text)
             label.pack(anchor="w", pady=2)
             self.labels.append((label, f"{idx + 1}. {manager}"))
 
-        for label, text in reversed(self.labels):
+        for idx, (label, text) in enumerate(reversed(self.labels)):
             if self.skip_reveal:
                 break
+
+            if idx == 0:  # If this is the last pick (reverse order)
+                await asyncio.sleep(REVEAL_DELAY)
+
             if label.winfo_exists():
                 label.config(text=text)
                 self.result_frame.update()
@@ -706,32 +747,23 @@ class LotteryResultWindow(tk.Toplevel):
         if self.skip_button.winfo_exists():
             self.skip_button.config(state=tk.DISABLED)
 
-    def simulate_draft(
-        self, num_teams: int, original_balls: List[int],
-        num_simulations=100000
-    ) -> Dict[int, List[float]]:
-        """Simulate the draft process and calculate the odds for each team."""
-        counts = defaultdict(lambda: [0] * num_teams)
+    @staticmethod
+    def exact_pick_odds(manager_balls: List[int], total_balls: int, pick_position: int) -> List[float]:
+        """Calculate the exact probability for each pick position using combinatorics."""
+        remaining_balls = total_balls
+        pick_probabilities = []
 
-        for _ in range(num_simulations):
-            balls = original_balls.copy()
-            order = []
+        for i in range(pick_position):
+            pick_probabilities.append([balls / remaining_balls for balls in manager_balls])
+            if i < pick_position - 1:
+                # Remove the selected manager's balls from consideration for the next pick
+                for j in range(len(manager_balls)):
+                    manager_balls[j] *= (remaining_balls - manager_balls[j]) / remaining_balls
+                remaining_balls -= 1
 
-            for _ in range(num_teams):
-                total_balls = sum(balls)
-                pick = random.choices(range(num_teams), weights=balls, k=1)[0]
-                order.append(pick)
-                balls[pick] = 0
+        return pick_probabilities[-1]
 
-            for pos, team in enumerate(order):
-                counts[team][pos] += 1
-
-        odds = {team: [count / num_simulations * 100 for count in counts[team]] for team in range(num_teams)}
-        return odds
-
-    def save_lottery_result(
-        self, selected_order: List[str], runtime: float, end_time: datetime
-    ) -> None:
+    def save_lottery_result(self, selected_order: List[str], runtime: float, end_time: datetime) -> None:
         """Save the lottery results to a text file."""
         file_path = filedialog.asksaveasfilename(
             initialdir=DEFAULT_SAVE_FOLDER,
@@ -746,12 +778,18 @@ class LotteryResultWindow(tk.Toplevel):
 
         username = getpass.getuser()
         distribution_type = self.league['distribution']
-        num_teams = len(self.league['managers'])
+        len(self.league['managers'])
 
-        total_balls = sum(self.original_balls)
+        custom_dist = self.league.get('custom_distribution', {})
+        manager_balls = dict(zip(custom_dist.get('order', self.league['managers']),
+                                 custom_dist.get('balls', self.original_balls)))
 
-        # Calculate odds for each pick for each manager using simulation
-        odds_matrix = self.simulate_draft(num_teams, self.original_balls.copy(), num_simulations=100000)
+        total_balls = sum(manager_balls.values())
+
+        # Calculate exact odds for each pick for each manager using combinatorial calculations
+        exact_odds_matrix = []
+        for i in range(len(selected_order)):
+            exact_odds_matrix.append(self.exact_pick_odds(list(manager_balls.values()), total_balls, i + 1))
 
         with open(file_path, 'w') as f:
             f.write("=" * 80 + "\n")
@@ -762,18 +800,19 @@ class LotteryResultWindow(tk.Toplevel):
             f.write("-" * 80 + "\n")
 
             table = [
-                ["Rank", "Manager", "Balls", "Estimated Odds of 1st Overall (%)", "Estimated Odds of This Pick (%)"]
+                ["Rank", "Manager", "Balls", "Odds of 1st Overall (%)", "Combinatorial Odds of This Pick (%)"]
             ]
 
             for idx, manager in enumerate(selected_order):
                 manager_index = self.league['managers'].index(manager)
-                first_overall_odds = odds_matrix[manager_index][0]
-                this_pick_odds = odds_matrix[manager_index][idx]
+                ball_count = manager_balls.get(manager, self.original_balls[manager_index])
+                first_overall_odds = (ball_count / total_balls) * 100  # Simple calculation
+                this_pick_odds = exact_odds_matrix[idx][manager_index] * 100  # Exact combinatorial calculation
 
                 table.append([
                     idx + 1,
                     manager,
-                    self.original_balls[manager_index],
+                    ball_count,
                     f"{first_overall_odds:.2f}%",
                     f"{this_pick_odds:.2f}%"
                 ])
@@ -781,20 +820,41 @@ class LotteryResultWindow(tk.Toplevel):
             f.write(tabulate(table, headers="firstrow", tablefmt="grid"))
             f.write("\n" + "-" * 80 + "\n")
 
-            # Add explanation of how the estimation of odds was calculated
-            f.write("\nESTIMATION EXPLANATION:\n")
+            # Add explanation of how the odds were calculated
+            f.write("\nODDS CALCULATION EXPLANATION:\n")
             f.write("-" * 80 + "\n")
-            f.write("The estimated odds shown above were calculated using a Monte Carlo simulation approach.\n")
             f.write(
-                "In this method, the draft lottery was simulated 100,000 times to account for the randomness of the process.\n"
-            )
+                "The odds of 1st Overall (%) were calculated by dividing the number of balls a manager has by the "
+                "total\n")
             f.write(
-                "For each simulation, the draft order was determined by randomly drawing teams based on their ball count, \n"
-            )
+                "number of balls and multiplying by 100. This represents the simple probability of drawing that "
+                "manager's\n")
+            f.write("ball on the first pick.\n\n")
+
             f.write(
-                "and the results of these simulations were then used to calculate the probabilities of each team \n"
-            )
-            f.write("landing in each draft position.\n")
+                "The Combinatorial Odds of This Pick (%) were calculated using combinatorial mathematics, "
+                "which considers\n")
+            f.write(
+                "all possible sequences of outcomes for the entire draft process. This method is more complex and "
+                "takes into\n")
+            f.write(
+                "account the dependencies between picks (e.g., if one manager's ball is picked, it reduces the "
+                "probability\n")
+            f.write("of their ball being picked again in subsequent draws).\n\n")
+
+            f.write(
+                "Because of this, the Combinatorial Odds may differ from the simple ball/total ball calculation, "
+                "particularly\n")
+            f.write(
+                "in scenarios where a manager has a disproportionately large or small number of balls compared to "
+                "others.\n")
+            f.write(
+                "For example, a manager with many balls may see their odds spread out across multiple picks, "
+                "while a manager\n")
+            f.write(
+                "with few balls may have a higher concentration of their odds in certain picks. This results in a "
+                "distribution\n")
+            f.write("that doesn't always match up perfectly with the simple odds calculation.\n")
             f.write("\n" + "-" * 80 + "\n")
 
             f.write("\nADDITIONAL INFORMATION:\n")
@@ -807,10 +867,10 @@ class LotteryResultWindow(tk.Toplevel):
             f.write(f"Time of File Save: {end_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Runtime Duration: {runtime:.2f} seconds\n")
             f.write(f"Generated by: {username}\n")
-            f.write("\nThis draft order was generated fairly using randomized algorithms.\n")
+            f.write("\nThis draft order was generated fairly using combinatorial mathematics.\n")
             f.write(
-                "Feel free to audit the code by either reviewing it yourself or feeding it into generative AI for auditing.\n\n"
-            )
+                "Feel free to audit the code by either reviewing it yourself or feeding it into generative AI for "
+                "auditing.\n\n")
 
             # Include the full Python script for auditing
             f.write("=" * 80 + "\n")
@@ -830,7 +890,7 @@ class LotteryResultWindow(tk.Toplevel):
 def main() -> None:
     """Main function to run the Fantasy Draft Lottery Randomizer."""
     root = tk.Tk()
-    app = DraftLotteryApp(root)
+    DraftLotteryApp(root)
     root.mainloop()
 
 
