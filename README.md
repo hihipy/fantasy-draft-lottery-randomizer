@@ -24,7 +24,7 @@ Note: `tkinter` and `asyncio` are included with Python.
 
 1. Run the script:
    ```bash
-   python fantasy_draft_lottery.py
+   python fantasy_draft_lottery_randomizer.py
    ```
 
 2. **Add or manage leagues:** Create new leagues or edit existing ones.
