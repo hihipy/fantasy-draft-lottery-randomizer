@@ -1,4 +1,4 @@
-# Fantasy Draft Lottery Randomizer
+# fantasy-draft-lottery-randomizer
 
 A GUI application for conducting fantasy sports draft lotteries. Supports multiple leagues, different lottery distribution types, and saves detailed results for transparency.
 
