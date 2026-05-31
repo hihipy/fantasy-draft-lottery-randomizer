@@ -11,6 +11,8 @@
 
 A GUI application for running fantasy sports draft lotteries. It supports multiple leagues and different lottery distribution types, and saves detailed results so the outcome can be audited.
 
+---
+
 ## Features
 
 - **Multiple leagues:** Create, edit, and delete leagues.
@@ -18,6 +20,8 @@ A GUI application for running fantasy sports draft lotteries. It supports multip
 - **Gradual reveal:** Reveals the draft order one pick at a time, with an option to skip to the results.
 - **Results file:** Saves the draft order, odds calculations, league info, and source code for auditing.
 - **Logging:** Event and error logging for troubleshooting.
+
+---
 
 ## Requirements
 
@@ -28,6 +32,8 @@ pip install tabulate
 ```
 
 Note: `tkinter` and `asyncio` are included with Python.
+
+---
 
 ## Usage
 
@@ -40,6 +46,8 @@ Note: `tkinter` and `asyncio` are included with Python.
 4. **Run the lottery:** Conduct the draft lottery for the selected league.
 5. **View and save results:** Review the draft order and save it to a file.
 
+---
+
 ## Customization
 
 - Number of teams per league
@@ -47,13 +55,19 @@ Note: `tkinter` and `asyncio` are included with Python.
 - Lottery distribution types and weights
 - Results file save location
 
+---
+
 ## Acknowledgments
 
 Inspired by the Draft Pick Lottery Generator at [draftpicklottery.com](https://draftpicklottery.com/index.php).
 
+---
+
 ## Disclaimer
 
 League managers are responsible for ensuring compliance with their league rules. The developers are not responsible for disputes arising from use of this tool.
+
+---
 
 ## License
 
