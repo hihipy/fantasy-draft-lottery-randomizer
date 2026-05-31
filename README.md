@@ -1,5 +1,14 @@
 # fantasy-draft-lottery-randomizer
 
+[![Link Check](https://github.com/hihipy/fantasy-draft-lottery-randomizer/actions/workflows/links.yml/badge.svg)](https://github.com/hihipy/fantasy-draft-lottery-randomizer/actions/workflows/links.yml)
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+**Built with**
+
+[![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![Tkinter](https://img.shields.io/badge/Tkinter-FFD43B?style=flat&logo=python&logoColor=black)](https://docs.python.org/3/library/tkinter.html)
+[![tabulate](https://img.shields.io/badge/tabulate-626E7B?style=flat&logoColor=white)](https://pypi.org/project/tabulate/)
+
 A GUI application for conducting fantasy sports draft lotteries. Supports multiple leagues, different lottery distribution types, and saves detailed results for transparency.
 
 ## Features
