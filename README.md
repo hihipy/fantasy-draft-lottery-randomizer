@@ -6,8 +6,8 @@
 **Built with**
 
 [![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
-[![Tkinter](https://img.shields.io/badge/Tkinter-FFD43B?style=flat&logo=python&logoColor=black)](https://docs.python.org/3/library/tkinter.html)
 [![tabulate](https://img.shields.io/badge/tabulate-626E7B?style=flat&logoColor=white)](https://pypi.org/project/tabulate/)
+[![Tkinter](https://img.shields.io/badge/Tkinter-FFD43B?style=flat&logo=python&logoColor=black)](https://docs.python.org/3/library/tkinter.html)
 
 A GUI application for running fantasy sports draft lotteries. It supports multiple leagues and different lottery distribution types, and saves detailed results so the outcome can be audited.
 
